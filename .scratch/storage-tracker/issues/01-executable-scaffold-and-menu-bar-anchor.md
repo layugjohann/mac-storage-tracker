@@ -15,9 +15,9 @@
 ## Prototype Finding
 Validated via prototype ([`prototype-menu-icon.html`](file:///Users/antonlayug/Desktop/Mac%20storage%20tracker/.scratch/storage-tracker/prototype-menu-icon.html)): Status Item uses Apple-native minimalist vector drive icon (`internaldrive` style) beside the compact capacity readout.
 
-## Resolution Notes
+## Answer
 - Initialized SPM package structure (`Package.swift`, `Sources/StorageTrackerCore`, `Sources/StorageTrackerApp`, and `Tests/StorageTrackerTests`) targeting macOS 13+.
-- Followed strict TDD workflow:
-  - Phase 1 (RED): Created `StatusBarMenuControllerTests` testing activation policy configuration (`.accessory`), button image configuration (`internaldrive`, template mode, accessibility description), and dropdown menu with working "Quit" action. Confirmed tests failed as expected.
-  - Phase 2 (GREEN): Implemented `AppConfiguration`, `StatusBarMenuController`, and `AppDelegate` in `StorageTrackerCore` with decoupled dependencies (`AppActivationPolicyConfigurable`, custom terminator).
-  - Phase 3 (REFACTOR & VERIFY): Extended test coverage to lifecycle events in `AppDelegate`, validated 0 warnings on compilation with `-warnings-as-errors`, verified test suite passes via `swift test` (5/5 tests passing), and verified clean process execution and termination via `swift run storage-tracker`.
+- Configured native macOS Accessory App specification with `Info.plist` containing `LSUIElement = true` embedded into Mach-O `__TEXT,__info_plist` and runtime policy `.accessory` set prior to `app.run()`.
+- Implemented menu bar anchor via `StatusBarMenuController` and `NSStatusBarButton.configureStorageTrackerIcon` using SF Symbol `internaldrive` in template mode with accessibility description.
+- Configured dropdown menu with canonical "Quit" action cleanly terminating process via shared terminator closure (`StatusBarMenuController.defaultTerminator`).
+- Verified zero build warnings, strict TDD coverage, and clean process execution and termination via `swift test` and `swift run storage-tracker`.

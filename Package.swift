@@ -8,7 +8,6 @@ let package = Package(
     ],
     products: [
         .executable(name: "storage-tracker", targets: ["StorageTrackerApp"]),
-        .library(name: "StorageTrackerCore", targets: ["StorageTrackerCore"]),
     ],
     dependencies: [],
     targets: [
@@ -18,7 +17,16 @@ let package = Package(
         ),
         .executableTarget(
             name: "StorageTrackerApp",
-            dependencies: ["StorageTrackerCore"]
+            dependencies: ["StorageTrackerCore"],
+            exclude: ["Info.plist"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Sources/StorageTrackerApp/Info.plist"
+                ])
+            ]
         ),
         .testTarget(
             name: "StorageTrackerTests",

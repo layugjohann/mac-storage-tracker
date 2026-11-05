@@ -4,10 +4,8 @@ import AppKit
 
 final class StatusBarMenuControllerTests: XCTestCase {
     func testStatusBarButtonConfigurationUsesInternalDriveSymbolAndTemplateMode() {
-        let controller = StatusBarMenuController()
         let button = NSStatusBarButton(frame: .zero)
-        
-        controller.configureButton(button)
+        button.configureStorageTrackerIcon()
         
         XCTAssertNotNil(button.image, "Status bar button must have an image configured")
         XCTAssertEqual(button.image?.isTemplate, true, "Image must be in template mode for monochrome rendering")
@@ -21,24 +19,17 @@ final class StatusBarMenuControllerTests: XCTestCase {
         })
         
         let menu = controller.menu
-        let quitItem = menu.items.first { $0.title.contains("Quit") }
+        let quitItem = menu.items.first { $0.title == "Quit" }
         
         XCTAssertNotNil(quitItem, "Menu must contain a Quit item")
-        XCTAssertEqual(quitItem?.title, "Quit Storage Tracker")
-        XCTAssertEqual(quitItem?.keyEquivalent, "q", "Quit item should use standard 'q' key equivalent")
+        XCTAssertEqual(quitItem?.title, "Quit")
+        XCTAssertEqual(quitItem?.keyEquivalent, "", "Quit item should not have a key equivalent in status menu")
         XCTAssertEqual(quitItem?.target as? StatusBarMenuController, controller, "Quit item target must be the controller")
         XCTAssertEqual(quitItem?.action, #selector(StatusBarMenuController.quitAction(_:)), "Quit item action must point to quitAction")
         
         // Trigger the quit action directly
         controller.quitAction(quitItem)
         XCTAssertTrue(quitCalled, "Invoking quit action must terminate cleanly via the terminator closure")
-    }
-    
-    func testAppConfiguresAccessoryPolicy() {
-        let recorder = MockActivationPolicyRecorder()
-        AppConfiguration.applyActivationPolicy(to: recorder)
-        
-        XCTAssertEqual(recorder.recordedPolicy, .accessory, "App must configure activation policy as .accessory to hide dock icon")
     }
 
     func testAttachCreatesStatusItemWithMenuAndConfiguredButton() {
@@ -57,11 +48,9 @@ final class StatusBarMenuControllerTests: XCTestCase {
         }
     }
 
-    func testAppDelegateConfiguresActivationPolicyAndCreatesMenuController() {
-        let recorder = MockActivationPolicyRecorder()
+    func testAppDelegateAttachesMenuControllerOnLaunch() {
         var quitInvoked = false
         let delegate = AppDelegate(
-            activationConfigurable: recorder,
             statusBar: .system,
             terminator: { quitInvoked = true }
         )
@@ -74,24 +63,29 @@ final class StatusBarMenuControllerTests: XCTestCase {
             }
         }
 
-        XCTAssertEqual(recorder.recordedPolicy, .accessory)
         XCTAssertNotNil(delegate.menuController)
         XCTAssertNotNil(delegate.menuController?.statusItem)
         XCTAssertEqual(delegate.menuController?.statusItem?.menu, delegate.menuController?.menu)
 
         // Verify quit action from the attached menu
-        let quitItem = delegate.menuController?.menu.items.first { $0.title.contains("Quit") }
+        let quitItem = delegate.menuController?.menu.items.first { $0.title == "Quit" }
         XCTAssertNotNil(quitItem)
         delegate.menuController?.quitAction(quitItem)
         XCTAssertTrue(quitInvoked)
     }
-}
 
-final class MockActivationPolicyRecorder: AppActivationPolicyConfigurable {
-    var recordedPolicy: NSApplication.ActivationPolicy?
-    
-    func setActivationPolicy(_ policy: NSApplication.ActivationPolicy) -> Bool {
-        self.recordedPolicy = policy
-        return true
+    func testInfoPlistConfiguresAccessoryApp() throws {
+        let currentFile = URL(fileURLWithPath: #filePath)
+        let packageRoot = currentFile
+            .deletingLastPathComponent() // StorageTrackerTests
+            .deletingLastPathComponent() // Tests
+            .deletingLastPathComponent() // Root
+        let infoPlistURL = packageRoot.appendingPathComponent("Sources/StorageTrackerApp/Info.plist")
+        
+        let data = try Data(contentsOf: infoPlistURL)
+        let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any]
+        
+        XCTAssertNotNil(plist, "Info.plist must be valid property list")
+        XCTAssertEqual(plist?["LSUIElement"] as? Bool, true, "LSUIElement must be true (Accessory App)")
     }
 }
