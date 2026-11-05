@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mac Storage Tracker - Status Icon & Menu Prototype</title>
+  <style>
+    :root {
+      --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+      --menubar-bg: rgba(255, 255, 255, 0.45);
+      --menubar-border: rgba(0, 0, 0, 0.08);
+      --menubar-text: #1d1d1f;
+      --dropdown-bg: rgba(246, 246, 246, 0.92);
+      --dropdown-border: rgba(0, 0, 0, 0.12);
+      --dropdown-text: #1d1d1f;
+      --dropdown-subtext: #86868b;
+      --item-hover: rgba(0, 113, 227, 0.9);
+      --item-hover-text: #ffffff;
+      --warning-color: #ff9f0a;
+      --critical-color: #ff453a;
+      --accent-color: #0071e3;
+      --gauge-fill: #34c759;
+    }
+
+    [data-theme="dark"] {
+      --menubar-bg: rgba(30, 30, 30, 0.55);
+      --menubar-border: rgba(255, 255, 255, 0.1);
+      --menubar-text: #f5f5f7;
+      --dropdown-bg: rgba(38, 38, 40, 0.92);
+      --dropdown-border: rgba(255, 255, 255, 0.15);
+      --dropdown-text: #f5f5f7;
+      --dropdown-subtext: #a1a1a6;
+      --item-hover: rgba(10, 132, 255, 0.95);
+      --item-hover-text: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: var(--font-stack);
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 30% 20%, #4a5568 0%, #1a202c 100%);
+      transition: background 0.4s ease;
+      color: var(--menubar-text);
+    }
+
+    body.wallpaper-light {
+      background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 50%, #fbc2eb 100%);
+    }
+
+    body.wallpaper-dark {
+      background: radial-gradient(circle at 50% 30%, #2d3748 0%, #0f172a 100%);
+    }
+
+    /* macOS Menu Bar */
+    .macos-menubar {
+      height: 28px;
+      background: var(--menubar-bg);
+      backdrop-filter: blur(25px) saturate(190%);
+      -webkit-backdrop-filter: blur(25px) saturate(190%);
+      border-bottom: 1px solid var(--menubar-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 500;
+      position: relative;
+      z-index: 100;
+      letter-spacing: -0.1px;
+    }
+
+    .menubar-left, .menubar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .apple-icon {
+      font-size: 15px;
+      opacity: 0.95;
+    }
+
+    .menubar-item {
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: default;
+      transition: background 0.15s ease;
+    }
+
+    .menubar-item:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Notch Simulation */
+    .notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 170px;
+      height: 32px;
+      background: #000000;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      display: none;
+      z-index: 150;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .show-notch .notch {
+      display: block;
+    }
+
+    /* The Status Item Under Test */
+    .status-item {
+      position: relative;
+      padding: 3px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .status-item:hover, .status-item.active {
+      background: rgba(255, 255, 255, 0.28);
+    }
+
+    [data-theme="dark"] .status-item:hover, [data-theme="dark"] .status-item.active {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    /* Warning & Critical Colors */
+    .status-item.warning {
+      color: var(--warning-color);
+    }
+
+    .status-item.critical {
+      color: var(--critical-color);
+      animation: pulse-glow 2s infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Dropdown Menu */
+    .dropdown-menu {
+      position: absolute;
+      top: 32px;
+      right: 0;
+      width: 310px;
+      background: var(--dropdown-bg);
+      backdrop-filter: blur(40px) saturate(200%);
+      -webkit-backdrop-filter: blur(40px) saturate(200%);
+      border: 1px solid var(--dropdown-border);
+      border-radius: 10px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35), 0 0 0 0.5px var(--dropdown-border);
+      padding: 6px 0;
+      display: none;
+      color: var(--dropdown-text);
+      z-index: 200;
+      font-size: 13px;
+    }
+
+    .dropdown-menu.open {
+      display: block;
+      animation: fadeIn 0.12s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .menu-header {
+      padding: 8px 14px 4px 14px;
+    }
+
+    .menu-header-title {
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .menu-header-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(120, 120, 128, 0.16);
+      color: var(--dropdown-text);
+    }
+
+    /* Progress bar */
+    .storage-bar-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(120, 120, 128, 0.2);
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      margin: 8px 0 6px 0;
+    }
+
+    .bar-used {
+      background: #0071e3;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .bar-purgeable {
+      background: #ff9f0a;
+      height: 100%;
+      transition: width 0.3s ease;
+    }
+
+    .bar-free {
+      background: rgba(120, 120, 128, 0.25);
+      height: 100%;
+    }
+
+    .menu-divider {
+      height: 1px;
+      background: var(--dropdown-border);
+      margin: 5px 0;
+    }
+
+    .menu-item {
+      padding: 5px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 12.5px;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .menu-item:hover {
+      background: var(--item-hover);
+      color: var(--item-hover-text);
+    }
+
+    .menu-item:hover .item-subtext, .menu-item:hover .item-shortcut {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .item-subtext {
+      color: var(--dropdown-subtext);
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .item-icon {
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.9;
+      flex-shrink: 0;
+    }
+
+    .item-shortcut {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--dropdown-subtext);
+      font-size: 11px;
+    }
+
+    /* Controls Panel */
+    .controls-panel {
+      position: fixed;
+      top: 60px;
+      left: 24px;
+      background: rgba(20, 20, 25, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px 20px;
+      color: #fff;
+      font-size: 13px;
+      width: 320px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 80;
+    }
+
+    .controls-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-row {
+      margin-bottom: 12px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: #a1a1a6;
+    }
+
+    .control-row input[type="range"] {
+      width: 100%;
+      accent-color: #0071e3;
+    }
+
+    .control-row-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .switch-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: none;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .switch-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Floating Prototype Switcher */
+    .prototype-switcher {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 18, 20, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 40px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #ffffff;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+      z-index: 300;
+    }
+
+    .nav-arrow {
+      background: rgba(255, 255, 255, 0.12);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .nav-arrow:hover {
+      background: rgba(255, 255, 255, 0.28);
+      transform: scale(1.05);
+    }
+
+    .variant-info {
+      text-align: center;
+      min-width: 260px;
+    }
+
+    .variant-code {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #0071e3;
+      font-weight: 700;
+    }
+
+    .variant-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .variant-desc {
+      font-size: 11px;
+      color: #86868b;
+    }
+
+    /* Specific Variant Visual Styles */
+    /* Variant A: Mini Pie/Ring Gauge */
+    .mini-gauge {
+      width: 14px;
+      height: 14px;
+      position: relative;
+    }
+
+    .mini-gauge svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .mini-gauge circle {
+      fill: none;
+      stroke-width: 3.5;
+    }
+
+    .mini-gauge .bg {
+      stroke: rgba(128, 128, 128, 0.35);
+    }
+
+    .mini-gauge .fg {
+      stroke: #34c759;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.3s ease, stroke 0.3s ease;
+    }
+
+    .status-item.warning .mini-gauge .fg {
+      stroke: var(--warning-color);
+    }
+
+    .status-item.critical .mini-gauge .fg {
+      stroke: var(--critical-color);
+    }
+
+    /* Variant C: Dual Badge */
+    .dual-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(120, 120, 128, 0.18);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body class="wallpaper-dark" data-theme="dark">
+
+  <!-- Notch Simulation -->
+  <div class="notch"></div>
+
+  <!-- macOS Top Menu Bar -->
+  <header class="macos-menubar">
+    <div class="menubar-left">
+      <span class="apple-icon"></span>
+      <span class="menubar-item" style="font-weight: 700;">Finder</span>
+      <span class="menubar-item">File</span>
+      <span class="menubar-item">Edit</span>
+      <span class="menubar-item">View</span>
+      <span class="menubar-item">Go</span>
+      <span class="menubar-item">Window</span>
+      <span class="menubar-item">Help</span>
+    </div>
+
+    <div class="menubar-right">
+      <!-- Status Item Anchor Under Test -->
+      <div id="statusItem" class="status-item" title="Click to open Storage Tracker menu">
+        <!-- Rendered dynamically by current variant -->
+      </div>
+
+      <!-- Native macOS Right Indicators -->
+      <span class="menubar-item" style="font-size: 11px;">Wi-Fi</span>
+      <span class="menubar-item" style="font-size: 11px;">100% ⚡</span>
+      <span class="menubar-item" style="font-size: 11px;">Mon Nov 5 9:30 PM</span>
+    </div>
+
+    <!-- Dropdown Menu -->
+    <div id="dropdownMenu" class="dropdown-menu">
+      <!-- Rendered dynamically by current variant -->
+    </div>
+  </header>
+
+  <!-- Interactive Simulation Controls -->
+  <aside class="controls-panel">
+    <div class="controls-title">
+      <span>Simulate System State</span>
+      <span style="font-size: 11px; color: #34c759; font-weight: 600;">Live Preview</span>
+    </div>
+
+    <div class="control-row">
+      <div class="control-label">
+        <span>Available Storage:</span>
+        <strong id="availLabel">142 GB (28.4%)</strong>
+      </div>
+      <input type="range" id="storageSlider" min="2" max="500" value="142" step="1">
+    </div>
+
+    <!-- Minimalist Icon Chooser for Variant A -->
+    <div class="control-row" id="iconChooserRow" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+      <div class="control-label">
+        <span>Minimalist Disk Icon Style:</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px;">
+        <button class="switch-btn" data-icon="apple-drive" style="text-align: left; font-size: 11px;">1. Apple Native</button>
+        <button class="switch-btn" data-icon="cylinder" style="text-align: left; font-size: 11px;">2. Platter Disc</button>
+        <button class="switch-btn" data-icon="chassis-meter" style="text-align: left; font-size: 11px;">3. Inset Meter</button>
+        <button class="switch-btn" data-icon="minimal-chip" style="text-align: left; font-size: 11px;">4. Flash SSD</button>
+      </div>
+      <div id="iconDescLabel" style="font-size: 11px; color: #a1a1a6; margin-top: 6px; line-height: 1.3;">
+        Subtle hardware chassis with platter slot & LED dot (matches macOS SF Symbol `internaldrive`).
+      </div>
+    </div>
+
+    <div class="control-row-toggle">
+      <span style="color: #a1a1a6;">Menu Bar Theme:</span>
+      <button class="switch-btn" id="themeToggleBtn">Toggle Light / Dark</button>
+    </div>
+
+    <div class="control-row-toggle">
+      <span style="color: #a1a1a6;">MacBook Display Notch:</span>
+      <button class="switch-btn" id="notchToggleBtn">Show / Hide Notch</button>
+    </div>
+
+    <div style="font-size: 11px; color: #86868b; margin-top: 10px; line-height: 1.4;">
+      💡 Tip: Drag slider below <strong>75 GB (15%)</strong> or <strong>10 GB</strong> to preview Warning and Critical states. Click status item in menu bar to open/close menu.
+    </div>
+  </aside>
+
+  <!-- Floating Prototype Switcher (Required by Prototype Skill) -->
+  <nav class="prototype-switcher">
+    <button class="nav-arrow" id="prevBtn" title="Previous variant (← key)">‹</button>
+    <div class="variant-info">
+      <div class="variant-code" id="variantCode">Variant A</div>
+      <div class="variant-name" id="variantName">Pill Ring Gauge</div>
+      <div class="variant-desc" id="variantDesc">Mini visual ring gauge + compact gigabytes</div>
+    </div>
+    <button class="nav-arrow" id="nextBtn" title="Next variant (→ key)">›</button>
+  </nav>
+
+  <script>
+    // State model
+    const state = {
+      totalCapacity: 500, // GB
+      availableCapacity: 142, // GB
+      purgeableSpace: 32, // GB
+      theme: 'dark',
+      notch: false,
+      menuOpen: true,
+      variant: 'A', // 'A', 'B', 'C'
+      iconStyle: 'apple-drive', // 'apple-drive', 'cylinder', 'chassis-meter', 'minimal-chip'
+      formatChoice: 'available' // 'available', 'percentFree', 'percentUsed'
+    };
+
+    // Shared Vector SVG Icon Helper Library
+    const vectorIcons = {
+      internalDrive: `
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="12" height="10" rx="2" />
+          <line x1="4.5" y1="8" x2="11.5" y2="8" />
+          <circle cx="11.5" cy="10.5" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      `,
+      externalDrive: `
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3.5" y="2" width="9" height="12" rx="2" />
+          <line x1="6" y1="10.5" x2="10" y2="10.5" />
+          <circle cx="8" cy="4.2" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      `,
+      storageChart: `
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="8" r="6" />
+          <path d="M8 2a6 6 0 0 1 6 6H8V2z" fill="currentColor" fill-opacity="0.2" />
+        </svg>
+      `,
+      subItemBranch: `
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+          <path d="M4 2v7a2 2 0 0 0 2 2h6" />
+        </svg>
+      `,
+      purgeableSparkle: `
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 1.5l1.3 3.2 3.2 1.3-3.2 1.3L8 10.5 6.7 7.3 3.5 6l3.2-1.3L8 1.5z" />
+          <path d="M12.5 10.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6.6-1.4z" />
+        </svg>
+      `,
+      refresh: `
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9l1.6 1.4" />
+          <path d="M13.5 2.5v3h-3" />
+        </svg>
+      `,
+      sliders: `
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="2" y1="4.5" x2="14" y2="4.5" />
+          <circle cx="6" cy="4.5" r="1.6" fill="var(--dropdown-bg)" />
+          <line x1="2" y1="11.5" x2="14" y2="11.5" />
+          <circle cx="10.5" cy="11.5" r="1.6" fill="var(--dropdown-bg)" />
+        </svg>
+      `,
+      check: `
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+        </svg>
+      `,
+      power: `
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5.2 4.2A5.2 5.2 0 1 0 10.8 4.2" />
+          <line x1="8" y1="2" x2="8" y2="7.5" />
+        </svg>
+      `,
+      externalLink: `
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12L12 4M5 4h7v7" />
+        </svg>
+      `
+    };
+
+    // Minimalist Disk Icons for the Menu Bar
+    const diskIcons = {
+      'apple-drive': {
+        name: 'Apple Native Drive',
+        desc: 'Precision hardware chassis vector with horizontal slit & status dot (Apple SF Symbol style)',
+        render: (statusClass) => `
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.95;">
+            <rect x="2" y="3" width="12" height="10" rx="2" />
+            <line x1="4.5" y1="8" x2="11.5" y2="8" />
+            <circle cx="11.5" cy="10.5" r="0.6" fill="currentColor" stroke="none" />
+          </svg>
+        `
+      },
+      'cylinder': {
+        name: 'Platter Disc Cylinder',
+        desc: 'Geometric double-disc cylinder vector, clean and architectural',
+        render: (statusClass) => `
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.95;">
+            <ellipse cx="8" cy="5" rx="5" ry="2.2" />
+            <path d="M3 5v6c0 1.2 2.24 2.2 5 2.2s5-1 5-2.2V5" />
+            <path d="M3 8c0 1.2 2.24 2.2 5 2.2s5-1 5-2.2" />
+          </svg>
+        `
+      },
+      'chassis-meter': {
+        name: 'Vector Drive + Gauge',
+        desc: 'Chassis vector paired with an integrated 1.5px baseline fill line',
+        render: (statusClass) => {
+          const pct = Math.round((state.availableCapacity / state.totalCapacity) * 100);
+          const barW = (12 * (100 - pct)) / 100;
+          return `
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+              <svg width="15" height="12" viewBox="0 0 16 13" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.95;">
+                <rect x="2" y="1.5" width="12" height="9" rx="1.5" />
+                <line x1="4.5" y1="6" x2="11.5" y2="6" stroke-opacity="0.6" />
+                <circle cx="11" cy="8.2" r="0.5" fill="currentColor" stroke="none" />
+              </svg>
+              <div style="width: 13px; height: 1.5px; background: rgba(128,128,128,0.35); border-radius: 1px; overflow: hidden;">
+                <div style="width: ${barW}px; height: 100%; background: ${statusClass === 'critical' ? 'var(--critical-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'currentColor'};"></div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      'minimal-chip': {
+        name: 'Flash SSD Module',
+        desc: 'Modern NVMe solid-state chip vector with clean contact pins',
+        render: (statusClass) => `
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.95;">
+            <rect x="3" y="3" width="10" height="10" rx="1.6" />
+            <circle cx="8" cy="8" r="1.5" />
+            <line x1="6" y1="13" x2="6" y2="14.5" />
+            <line x1="8" y1="13" x2="8" y2="14.5" />
+            <line x1="10" y1="13" x2="10" y2="14.5" />
+          </svg>
+        `
+      }
+    };
+
+    // Variant Definitions
+    const variants = {
+      'A': {
+        name: 'Refined Minimalist Disk + Breakdown',
+        desc: 'Native-feel minimalist disk icon with clean gigabytes readout',
+        renderStatus: (s, statusClass) => {
+          const iconRenderer = diskIcons[s.iconStyle] || diskIcons['apple-drive'];
+          return `
+            ${iconRenderer.render(statusClass)}
+            <span>${s.availableCapacity} GB</span>
+          `;
+        },
+        renderDropdown: (s) => {
+          const used = s.totalCapacity - s.availableCapacity;
+          const rawFree = Math.max(0, s.availableCapacity - s.purgeableSpace);
+          const usedPct = ((used / s.totalCapacity) * 100).toFixed(1);
+          const purgePct = ((s.purgeableSpace / s.totalCapacity) * 100).toFixed(1);
+          const freePct = ((rawFree / s.totalCapacity) * 100).toFixed(1);
+
+          return `
+            <div class="menu-header">
+              <div class="menu-header-title">
+                <span>Macintosh HD</span>
+                <span class="menu-header-badge">${s.totalCapacity} GB APFS</span>
+              </div>
+              <div class="storage-bar-track">
+                <div class="bar-used" style="width: ${usedPct}%" title="Used: ${used} GB"></div>
+                <div class="bar-purgeable" style="width: ${purgePct}%" title="Purgeable: ${s.purgeableSpace} GB"></div>
+                <div class="bar-free" style="width: ${freePct}%" title="Free: ${rawFree} GB"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--dropdown-subtext); margin-top: 4px;">
+                <span>${s.availableCapacity} GB Available</span>
+                <span>${used} GB Used (${usedPct}%)</span>
+              </div>
+            </div>
+
+            <div class="menu-divider"></div>
+
+            <div class="menu-item">
+              <span class="item-left"><span class="item-icon">${vectorIcons.storageChart}</span>Available Space</span>
+              <span class="item-subtext" style="font-weight: 600;">${s.availableCapacity} GB</span>
+            </div>
+            <div class="menu-item" style="padding-left: 26px;">
+              <span class="item-left"><span class="item-icon">${vectorIcons.subItemBranch}</span>Raw Free</span>
+              <span class="item-subtext">${rawFree} GB</span>
+            </div>
+            <div class="menu-item" style="padding-left: 26px;">
+              <span class="item-left"><span class="item-icon">${vectorIcons.purgeableSparkle}</span>Purgeable Cache</span>
+              <span class="item-subtext">${s.purgeableSpace} GB</span>
+            </div>
+
+            <div class="menu-divider"></div>
+            <div style="padding: 4px 14px 2px 14px; font-size: 11px; font-weight: 600; color: var(--dropdown-subtext); letter-spacing: 0.3px; text-transform: uppercase;">External Drives</div>
+            <div class="menu-item">
+              <span class="item-left"><span class="item-icon">${vectorIcons.externalDrive}</span>Samsung T7 SSD</span>
+              <span class="item-subtext">680 GB / 1 TB</span>
+            </div>
+
+            <div class="menu-divider"></div>
+            <div class="menu-item" onclick="alert('Forced immediate refresh')">
+              <span class="item-left"><span class="item-icon">${vectorIcons.refresh}</span>Refresh Now</span>
+              <span class="item-shortcut">⌘R</span>
+            </div>
+            <div class="menu-item" onclick="alert('Would open macOS System Settings > Storage')">
+              <span class="item-left"><span class="item-icon">${vectorIcons.sliders}</span>Open Storage Settings...</span>
+              <span class="item-shortcut">${vectorIcons.externalLink}</span>
+            </div>
+            <div class="menu-item" onclick="alert('Toggled Launch at Login')">
+              <span class="item-left"><span class="item-icon" style="color: #34c759;">${vectorIcons.check}</span>Launch at Login</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item" onclick="alert('Exiting Storage Tracker')">
+              <span class="item-left"><span class="item-icon">${vectorIcons.power}</span>Quit Storage Tracker</span>
+              <span class="item-shortcut">⌘Q</span>
+            </div>
+          `;
+        }
+      },
+      'B': {
+        name: 'Clean Native Minimalist',
+        desc: 'Pure Apple SF Symbol disk + standard native NSMenu layout',
+        renderStatus: (s, statusClass) => {
+          let icon = '􀤂'; // Apple disk symbol
+          if (statusClass === 'critical') icon = '􀇾'; // exclamation mark
+          else if (statusClass === 'warning') icon = '􀇾';
+          return `
+            <span style="font-size: 13px;">${icon}</span>
+            <span>${s.availableCapacity} GB Free</span>
+          `;
+        },
+        renderDropdown: (s) => {
+          const rawFree = Math.max(0, s.availableCapacity - s.purgeableSpace);
+          return `
+            <div class="menu-item" style="font-weight: 700; pointer-events: none;">
+              <span>Macintosh HD — ${s.availableCapacity} GB of ${s.totalCapacity} GB Available</span>
+            </div>
+            <div class="menu-item" style="color: var(--dropdown-subtext); pointer-events: none; font-size: 11.5px;">
+              <span>(${rawFree} GB unallocated + ${s.purgeableSpace} GB purgeable)</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span>Display: Remaining Space (GB)</span>
+              <span class="item-shortcut">✓</span>
+            </div>
+            <div class="menu-item">
+              <span>Display: Free Percentage</span>
+            </div>
+            <div class="menu-item">
+              <span>Display: Used Percentage</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span>Samsung T7 SSD (External)</span>
+              <span class="item-subtext">680 GB free</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span>Refresh</span>
+              <span class="item-shortcut">⌘R</span>
+            </div>
+            <div class="menu-item">
+              <span>Storage Settings…</span>
+            </div>
+            <div class="menu-item">
+              <span>Start at Login</span>
+              <span class="item-shortcut">✓</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span>Quit Storage Tracker</span>
+              <span class="item-shortcut">⌘Q</span>
+            </div>
+          `;
+        }
+      },
+      'C': {
+        name: 'Dual Metric & Telemetry',
+        desc: 'Information-dense: shows both % and GB at a glance with split metrics',
+        renderStatus: (s, statusClass) => {
+          const pct = Math.round((s.availableCapacity / s.totalCapacity) * 100);
+          return `
+            <div class="dual-badge">
+              <span style="font-weight: 700; color: ${statusClass === 'critical' ? 'var(--critical-color)' : statusClass === 'warning' ? 'var(--warning-color)' : 'var(--gauge-fill)'};">${pct}%</span>
+              <span style="opacity: 0.5;">|</span>
+              <span>${s.availableCapacity}G</span>
+            </div>
+          `;
+        },
+        renderDropdown: (s) => {
+          const used = s.totalCapacity - s.availableCapacity;
+          const pct = Math.round((s.availableCapacity / s.totalCapacity) * 100);
+          return `
+            <div class="menu-header">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-size: 15px; font-weight: 800;">${pct}% Available</span>
+                <span style="font-size: 12px; color: var(--dropdown-subtext);">${s.availableCapacity} GB left</span>
+              </div>
+              <div style="font-size: 11px; color: var(--dropdown-subtext); margin-top: 2px;">
+                Internal Macintosh HD (${s.totalCapacity} GB total)
+              </div>
+            </div>
+            <div class="menu-divider"></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 14px;">
+              <div style="background: rgba(120, 120, 128, 0.1); padding: 8px; border-radius: 6px; text-align: center;">
+                <div style="font-size: 10px; color: var(--dropdown-subtext); text-transform: uppercase;">Purgeable</div>
+                <div style="font-size: 13px; font-weight: 700; color: #ff9f0a; margin-top: 2px;">${s.purgeableSpace} GB</div>
+              </div>
+              <div style="background: rgba(120, 120, 128, 0.1); padding: 8px; border-radius: 6px; text-align: center;">
+                <div style="font-size: 10px; color: var(--dropdown-subtext); text-transform: uppercase;">Used Space</div>
+                <div style="font-size: 13px; font-weight: 700; color: #0071e3; margin-top: 2px;">${used} GB</div>
+              </div>
+            </div>
+            <div class="menu-divider"></div>
+            <div style="padding: 2px 14px; font-size: 11px; font-weight: 600; color: var(--dropdown-subtext);">EXTERNAL VOLUMES (1)</div>
+            <div class="menu-item">
+              <span class="item-left"><span>⚡</span>Samsung T7 SSD</span>
+              <span class="item-subtext">68% free (680 GB)</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span class="item-left"><span>⚙️</span>macOS Storage Settings</span>
+            </div>
+            <div class="menu-item">
+              <span class="item-left"><span>✓</span>Launch at Login</span>
+            </div>
+            <div class="menu-divider"></div>
+            <div class="menu-item">
+              <span class="item-left"><span>✕</span>Quit</span>
+            </div>
+          `;
+        }
+      }
+    };
+
+    // DOM Elements
+    const statusItemEl = document.getElementById('statusItem');
+    const dropdownMenuEl = document.getElementById('dropdownMenu');
+    const storageSliderEl = document.getElementById('storageSlider');
+    const availLabelEl = document.getElementById('availLabel');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const notchToggleBtn = document.getElementById('notchToggleBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const variantCodeEl = document.getElementById('variantCode');
+    const variantNameEl = document.getElementById('variantName');
+    const variantDescEl = document.getElementById('variantDesc');
+    const iconChooserRowEl = document.getElementById('iconChooserRow');
+    const iconDescLabelEl = document.getElementById('iconDescLabel');
+
+    // Minimalist icon buttons
+    document.querySelectorAll('[data-icon]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const iconKey = btn.getAttribute('data-icon');
+        state.iconStyle = iconKey;
+        document.querySelectorAll('[data-icon]').forEach(b => {
+          b.style.background = b === btn ? '#0071e3' : 'rgba(255, 255, 255, 0.15)';
+        });
+        if (diskIcons[iconKey] && iconDescLabelEl) {
+          iconDescLabelEl.textContent = diskIcons[iconKey].desc;
+        }
+        render();
+      });
+    });
+
+    // Read initial variant from URL param or default
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialVariant = urlParams.get('variant') || 'A';
+    if (variants[initialVariant]) state.variant = initialVariant;
+
+    function getThresholdClass(availableGB, totalGB) {
+      const pct = (availableGB / totalGB) * 100;
+      if (availableGB <= 10 || pct <= 5) return 'critical';
+      if (availableGB <= 75 || pct <= 15) return 'warning';
+      return 'normal';
+    }
+
+    function render() {
+      const current = variants[state.variant];
+      const statusClass = getThresholdClass(state.availableCapacity, state.totalCapacity);
+
+      // Status item classes
+      statusItemEl.className = 'status-item ' + (statusClass !== 'normal' ? statusClass : '') + (state.menuOpen ? ' active' : '');
+      statusItemEl.innerHTML = current.renderStatus(state, statusClass);
+
+      // Dropdown menu
+      dropdownMenuEl.className = 'dropdown-menu ' + (state.menuOpen ? 'open' : '');
+      dropdownMenuEl.innerHTML = current.renderDropdown(state);
+
+      // Switcher pill
+      variantCodeEl.textContent = `Variant ${state.variant}`;
+      variantNameEl.textContent = current.name;
+      variantDescEl.textContent = current.desc;
+
+      // Show/hide icon chooser for Variant A
+      if (iconChooserRowEl) {
+        iconChooserRowEl.style.display = state.variant === 'A' ? 'block' : 'none';
+        document.querySelectorAll('[data-icon]').forEach(b => {
+          b.style.background = b.getAttribute('data-icon') === state.iconStyle ? '#0071e3' : 'rgba(255, 255, 255, 0.15)';
+        });
+      }
+
+      // Controls
+      const pct = ((state.availableCapacity / state.totalCapacity) * 100).toFixed(1);
+      availLabelEl.textContent = `${state.availableCapacity} GB (${pct}%) - ${statusClass.toUpperCase()}`;
+      if (statusClass === 'critical') availLabelEl.style.color = 'var(--critical-color)';
+      else if (statusClass === 'warning') availLabelEl.style.color = 'var(--warning-color)';
+      else availLabelEl.style.color = '#34c759';
+    }
+
+    function setVariant(key) {
+      if (!variants[key]) return;
+      state.variant = key;
+      const url = new URL(window.location);
+      url.searchParams.set('variant', key);
+      window.history.replaceState({}, '', url);
+      render();
+    }
+
+    function cycleVariant(dir) {
+      const keys = Object.keys(variants);
+      const currentIndex = keys.indexOf(state.variant);
+      let nextIndex = (currentIndex + dir + keys.length) % keys.length;
+      setVariant(keys[nextIndex]);
+    }
+
+    // Event Listeners
+    statusItemEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.menuOpen = !state.menuOpen;
+      render();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdownMenuEl.contains(e.target) && !statusItemEl.contains(e.target)) {
+        if (state.menuOpen) {
+          state.menuOpen = false;
+          render();
+        }
+      }
+    });
+
+    storageSliderEl.addEventListener('input', (e) => {
+      state.availableCapacity = parseInt(e.target.value, 10);
+      render();
+    });
+
+    themeToggleBtn.addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', state.theme);
+      document.body.className = state.theme === 'dark' ? 'wallpaper-dark' : 'wallpaper-light';
+      if (state.notch) document.body.classList.add('show-notch');
+      render();
+    });
+
+    notchToggleBtn.addEventListener('click', () => {
+      state.notch = !state.notch;
+      document.body.classList.toggle('show-notch', state.notch);
+    });
+
+    prevBtn.addEventListener('click', () => cycleVariant(-1));
+    nextBtn.addEventListener('click', () => cycleVariant(1));
+
+    // Keyboard navigation
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key === 'ArrowLeft') cycleVariant(-1);
+      if (e.key === 'ArrowRight') cycleVariant(1);
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
