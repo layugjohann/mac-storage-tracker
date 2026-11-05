@@ -215,7 +215,7 @@ ${ADR_SECTION}
 ## Ticket Details (${TICKET_FILENAME}):
 ${TICKET_CONTENT}
 
-## MANDATORY ENGINEERING & TDD INSTRUCTIONS:
+## MANDATORY ENGINEERING, TDD & CODE-REVIEW INSTRUCTIONS:
 1. STRICT TEST-DRIVEN DEVELOPMENT (TDD) IS REQUIRED:
    - Phase 1 (RED): Before writing any implementation code, write automated tests that explicitly reproduce or specify the acceptance criteria for this ticket.
    - Run the tests to verify that they fail for the expected reason.
@@ -224,12 +224,26 @@ ${TICKET_CONTENT}
    - For Swift projects: use standard SPM structure (Package.swift, Sources/, Tests/). Run and verify \`swift test\` and \`swift build\`.
    - Never mock what you can test directly, but decouple system dependencies (e.g., AppKit, disk capacity APIs) using clean protocols/interfaces (like VolumeProvider) for 100% deterministic testing.
 
-2. FINISHING THE TICKET:
-   - When all acceptance criteria checklist items are satisfied, tests pass, and builds are clean:
+2. MANDATORY TWO-AXIS CODE REVIEW & RE-IMPLEMENTATION (SELF-CORRECTION):
+   - Once implementation is complete and tests pass, review your working changes across two strict axes before finishing:
+     * Axis 1: Spec Verification
+       - Requirements fidelity: Are all ticket requirements and acceptance criteria faithfully met?
+       - Scope creep: Delete any extraneous code, speculative abstractions, or unused functions not requested by the spec/ticket.
+       - Logic correctness: Are edge cases and potential off-by-one errors handled?
+     * Axis 2: Standards & Code Smells
+       - Repo Standards: Check for adherence to project conventions and existing architecture.
+       - Baseline Code Smells: Check for Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, and Speculative Generality.
+   - Fix all review findings immediately in place:
+     - Use TDD for any behavioral gaps (test first, then fix).
+     - Refactor smells safely under the protection of existing green tests.
+   - Re-run typechecking and the full test suite (\`swift test\` and \`swift build\`) to ensure 100% passing tests with zero warnings or errors.
+
+3. FINISHING THE TICKET:
+   - When all acceptance criteria are satisfied, tests pass, review findings are resolved, and builds are clean:
      - Update the ticket file (\`${TICKET_FILE}\`):
        - Check off all completed checkboxes (change \`- [ ]\` to \`- [x]\`).
        - Change the status line to: \`**Status:** resolved\` (or \`Status: resolved\`).
-       - Append a short summary under a \`## Resolution Notes\` heading describing the solution and test results.
+       - Append a short summary under a \`## Resolution Notes\` heading describing the solution, code review findings addressed, and test results.
    - Do NOT run git commit or git push; the outer automated runner will verify tests and commit changes on the host.
 "
 

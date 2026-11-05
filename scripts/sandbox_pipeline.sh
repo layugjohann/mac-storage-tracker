@@ -3,7 +3,8 @@ set -euo pipefail
 
 # -----------------------------------------------------------------------------
 # scripts/sandbox_pipeline.sh
-# Sequential AFK Sandbox Pipeline across a range of tickets.
+# Sequential AFK Sandbox Pipeline across a range of tickets:
+# Strict TDD -> Two-Axis Code Review -> Re-implementation & Verification.
 # Usage: ./scripts/sandbox_pipeline.sh <start-ticket-number> <end-ticket-number> [feature-slug]
 # -----------------------------------------------------------------------------
 
